@@ -1,19 +1,29 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { logger } = require('../utils/logger');
-const { isValidUrl, normalizeUrl } = require('../utils/urlUtils');
+const axios = require("axios");
+const cheerio = require("cheerio");
+const { logger } = require("../utils/logger");
+const { isValidUrl, normalizeUrl } = require("../utils/urlUtils");
 
 class ScraperService {
   constructor() {
     this.defaultHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5",
+      "Accept-Encoding": "gzip, deflate, br",
+      Connection: "keep-alive",
+      "Upgrade-Insecure-Requests": "1",
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
     };
   }
 
   async scrapeWebsite(url, options = {}) {
     try {
       if (!isValidUrl(url)) {
-        throw new Error('Invalid URL provided');
+        throw new Error("Invalid URL provided");
       }
 
       const normalizedUrl = normalizeUrl(url);
@@ -22,8 +32,8 @@ class ScraperService {
 
       return {
         url: normalizedUrl,
-        title: $('title').text().trim(),
-        metaDescription: $('meta[name="description"]').attr('content') || '',
+        title: $("title").text().trim(),
+        metaDescription: $('meta[name="description"]').attr("content") || "",
         headings: this.extractHeadings($),
         paragraphs: this.extractParagraphs($),
         lists: this.extractLists($),
@@ -47,7 +57,7 @@ class ScraperService {
       } catch (error) {
         errors.push({
           url,
-          error: error.message
+          error: error.message,
         });
       }
     }
@@ -57,14 +67,14 @@ class ScraperService {
       errors,
       totalProcessed: urls.length,
       successCount: results.length,
-      errorCount: errors.length
+      errorCount: errors.length,
     };
   }
 
   async scrapeSelective(url, selectors, options = {}) {
     try {
       if (!isValidUrl(url)) {
-        throw new Error('Invalid URL provided');
+        throw new Error("Invalid URL provided");
       }
 
       const normalizedUrl = normalizeUrl(url);
@@ -74,15 +84,15 @@ class ScraperService {
       const result = { url: normalizedUrl };
 
       for (const [key, selector] of Object.entries(selectors)) {
-        if (typeof selector === 'string') {
+        if (typeof selector === "string") {
           result[key] = $(selector).text().trim();
-        } else if (selector.type === 'text') {
+        } else if (selector.type === "text") {
           result[key] = $(selector.selector).text().trim();
-        } else if (selector.type === 'attr') {
+        } else if (selector.type === "attr") {
           result[key] = $(selector.selector).attr(selector.attribute);
-        } else if (selector.type === 'html') {
+        } else if (selector.type === "html") {
           result[key] = $(selector.selector).html();
-        } else if (selector.type === 'array') {
+        } else if (selector.type === "array") {
           result[key] = [];
           $(selector.selector).each((i, elem) => {
             result[key].push($(elem).text().trim());
@@ -125,11 +135,11 @@ class ScraperService {
 
   async fetchPage(url, options = {}) {
     const config = {
-      method: 'GET',
+      method: "GET",
       url,
       headers: { ...this.defaultHeaders, ...options.headers },
       timeout: options.timeout || 10000,
-      maxRedirects: options.maxRedirects || 5
+      maxRedirects: options.maxRedirects || 5,
     };
 
     return await axios(config);
@@ -137,10 +147,10 @@ class ScraperService {
 
   extractHeadings($) {
     const headings = [];
-    $('h1, h2, h3, h4, h5, h6').each((i, elem) => {
+    $("h1, h2, h3, h4, h5, h6").each((i, elem) => {
       headings.push({
         level: elem.tagName,
-        text: $(elem).text().trim()
+        text: $(elem).text().trim(),
       });
     });
     return headings;
@@ -148,7 +158,7 @@ class ScraperService {
 
   extractParagraphs($) {
     const paragraphs = [];
-    $('p').each((i, elem) => {
+    $("p").each((i, elem) => {
       const text = $(elem).text().trim();
       if (text) {
         paragraphs.push(text);
@@ -158,60 +168,64 @@ class ScraperService {
   }
 
   extractLists($) {
-  const lists = [];
-  
-  // Extract ordered lists (ol)
-  $('ol').each((i, elem) => {
-    const items = [];
-    $(elem).find('li').each((j, li) => {
-      const text = $(li).text().trim();
-      if (text) {
-        items.push(text);
+    const lists = [];
+
+    // Extract ordered lists (ol)
+    $("ol").each((i, elem) => {
+      const items = [];
+      $(elem)
+        .find("li")
+        .each((j, li) => {
+          const text = $(li).text().trim();
+          if (text) {
+            items.push(text);
+          }
+        });
+
+      if (items.length > 0) {
+        lists.push({
+          type: "ordered",
+          items: items,
+        });
       }
     });
-    
-    if (items.length > 0) {
-      lists.push({
-        type: 'ordered',
-        items: items
-      });
-    }
-  });
-  
-  // Extract unordered lists (ul)
-  $('ul').each((i, elem) => {
-    const items = [];
-    $(elem).find('li').each((j, li) => {
-      const text = $(li).text().trim();
-      if (text) {
-        items.push(text);
+
+    // Extract unordered lists (ul)
+    $("ul").each((i, elem) => {
+      const items = [];
+      $(elem)
+        .find("li")
+        .each((j, li) => {
+          const text = $(li).text().trim();
+          if (text) {
+            items.push(text);
+          }
+        });
+
+      if (items.length > 0) {
+        lists.push({
+          type: "unordered",
+          items: items,
+        });
       }
     });
-    
-    if (items.length > 0) {
-      lists.push({
-        type: 'unordered',
-        items: items
-      });
-    }
-  });
-  
-  return lists;
-}
+
+    return lists;
+  }
 
   extractLinksFromCheerio($, baseUrl) {
     const links = [];
-    $('a[href]').each((i, elem) => {
-      const href = $(elem).attr('href');
+    $("a[href]").each((i, elem) => {
+      const href = $(elem).attr("href");
       const text = $(elem).text().trim();
-      
+
       if (href) {
         try {
           const absoluteUrl = new URL(href, baseUrl).href;
           links.push({
             url: absoluteUrl,
-            text: text || 'No text',
-            isExternal: !absoluteUrl.startsWith(new URL(baseUrl).origin)
+            text: text || "No text",
+            isExternal: !absoluteUrl.startsWith(new URL(baseUrl).origin),
           });
         } catch (error) {
           // Skip invalid URLs
@@ -223,17 +237,17 @@ class ScraperService {
 
   extractImagesFromCheerio($, baseUrl) {
     const images = [];
-    $('img[src]').each((i, elem) => {
-      const src = $(elem).attr('src');
-      const alt = $(elem).attr('alt') || '';
-      
+    $("img[src]").each((i, elem) => {
+      const src = $(elem).attr("src");
+      const alt = $(elem).attr("alt") || "";
+
       if (src) {
         try {
           const absoluteUrl = new URL(src, baseUrl).href;
           images.push({
             src: absoluteUrl,
             alt: alt,
-            title: $(elem).attr('title') || ''
+            title: $(elem).attr("title") || "",
           });
         } catch (error) {
           // Skip invalid URLs
