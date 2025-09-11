@@ -134,16 +134,63 @@ class ScraperService {
   }
 
   async fetchPage(url, options = {}) {
-    const config = {
-      method: "GET",
-      url,
-      headers: { ...this.defaultHeaders, ...options.headers },
-      timeout: options.timeout || 10000,
-      maxRedirects: options.maxRedirects || 5,
-    };
+  const config = {
+    method: "GET",
+    url,
+    headers: { 
+      ...this.defaultHeaders, 
+      ...options.headers 
+    },
+    timeout: options.timeout || 10000,
+    maxRedirects: options.maxRedirects || 5,
+  };
 
-    return await axios(config);
+  try {
+    const response = await axios(config);
+
+    // ✅ Log useful info on success
+    console.log("✅ FETCH SUCCESS");
+    console.log("URL:", url);
+    console.log("Request headers:", config.headers);
+    console.log("Response status:", response.status);
+    console.log("Response headers:", response.headers);
+
+    return response;
+  } catch (error) {
+    // ✅ Log useful info on error
+    console.error("❌ FETCH ERROR");
+    console.error("URL:", url);
+    console.error("Request headers:", config.headers);
+
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response headers:", error.response.headers);
+      console.error(
+        "Response data snippet:",
+        typeof error.response.data === "string"
+          ? error.response.data.slice(0, 200)
+          : JSON.stringify(error.response.data).slice(0, 200)
+      );
+    } else {
+      console.error("Error message:", error.message);
+    }
+
+    throw error;
   }
+}
+
+
+  // async fetchPage(url, options = {}) {
+  //   const config = {
+  //     method: "GET",
+  //     url,
+  //     headers: { ...this.defaultHeaders, ...options.headers },
+  //     timeout: options.timeout || 10000,
+  //     maxRedirects: options.maxRedirects || 5,
+  //   };
+
+  //   return await axios(config);
+  // }
 
   extractHeadings($) {
     const headings = [];
