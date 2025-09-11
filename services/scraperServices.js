@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const puppeteer = require('puppeteer')
 const { logger } = require("../utils/logger");
 const { isValidUrl, normalizeUrl } = require("../utils/urlUtils");
 
@@ -134,51 +135,53 @@ class ScraperService {
   }
 
   async fetchPage(url, options = {}) {
-  const config = {
-    method: "GET",
-    url,
-    headers: { 
-      ...this.defaultHeaders, 
-      ...options.headers 
-    },
-    timeout: options.timeout || 10000,
-    maxRedirects: options.maxRedirects || 5,
-  };
+    const config = {
+      method: "GET",
+      url,
+      headers: { ...this.defaultHeaders, ...options.headers },
+      timeout: options.timeout || 10000,
+      maxRedirects: options.maxRedirects || 5,
+    };
 
-  try {
-    const response = await axios(config);
+    try {
+      const response = await axios(config);
 
-    // ✅ Log useful info on success
-    console.log("✅ FETCH SUCCESS");
-    console.log("URL:", url);
-    console.log("Request headers:", config.headers);
-    console.log("Response status:", response.status);
-    console.log("Response headers:", response.headers);
+      // ✅ Detect Cloudflare block
+      if (
+        response.headers["cf-mitigated"] ||
+        (typeof response.data === "string" &&
+          response.data.includes("Just a moment..."))
+      ) {
+        console.warn("⚠️ Cloudflare challenge detected, retrying with Puppeteer...");
+        return await this.fetchPageWithBrowser(url);
+      }
 
-    return response;
-  } catch (error) {
-    // ✅ Log useful info on error
-    console.error("❌ FETCH ERROR");
-    console.error("URL:", url);
-    console.error("Request headers:", config.headers);
-
-    if (error.response) {
-      console.error("Response status:", error.response.status);
-      console.error("Response headers:", error.response.headers);
-      console.error(
-        "Response data snippet:",
-        typeof error.response.data === "string"
-          ? error.response.data.slice(0, 200)
-          : JSON.stringify(error.response.data).slice(0, 200)
-      );
-    } else {
-      console.error("Error message:", error.message);
+      return response.data;
+    } catch (error) {
+      if (error.response && error.response.status === 403) {
+        console.warn("⚠️ 403 Forbidden, retrying with Puppeteer...");
+        return await this.fetchPageWithBrowser(url);
+      }
+      throw error;
     }
-
-    throw error;
   }
-}
 
+  async fetchPageWithBrowser(url) {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"], // important for Render
+    });
+    const page = await browser.newPage();
+
+    // Use same headers for consistency
+    await page.setExtraHTTPHeaders(this.defaultHeaders);
+
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    const html = await page.content();
+    await browser.close();
+
+    return html;
+  }
 
   // async fetchPage(url, options = {}) {
   //   const config = {
