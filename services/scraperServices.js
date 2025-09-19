@@ -29,7 +29,7 @@ class ScraperService {
 
       const normalizedUrl = normalizeUrl(url);
       const response = await this.fetchPage(normalizedUrl, options);
-      const $ = cheerio.load(response.data);
+      const $ = cheerio.load(response);
 
       return {
         url: normalizedUrl,
