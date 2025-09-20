@@ -169,14 +169,25 @@ class ScraperService {
   async fetchPageWithBrowser(url) {
     const browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"], // important for Render
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+        "--no-zygote"
+      ],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
     });
     const page = await browser.newPage();
 
     // Use same headers for consistency
     await page.setExtraHTTPHeaders(this.defaultHeaders);
 
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    await page.goto(url, {
+      waitUntil: "networkidle2",
+      timeout: parseInt(process.env.PUPPETEER_TIMEOUT, 10) || 30000
+    });
     const html = await page.content();
     await browser.close();
 
